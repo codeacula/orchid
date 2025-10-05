@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./src/Backend
+      dockerfile: Dockerfile
+    container_name: orchid-backend
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    volumes:
+      - ./src/Backend:/app
+      - /app/bin
+      - /app/obj
+    networks:
+      - orchid-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./src/Frontend
+      dockerfile: Dockerfile
+    container_name: orchid-frontend
+    ports:
+      - "8080:80"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:5000
+    volumes:
+      - ./src/Frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - orchid-network
+    restart: unless-stopped
+
+networks:
+  orchid-network:
+    driver: bridge
