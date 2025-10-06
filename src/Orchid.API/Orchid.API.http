@@ -1,0 +1,6 @@
+@Orchid.API_HostAddress = http://localhost:5165
+
+GET {{Orchid.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
