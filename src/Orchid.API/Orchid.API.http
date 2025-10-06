@@ -1,6 +1,6 @@
-@Orchid.API_HostAddress = http://localhost:5165
+@Orchid.Api_HostAddress = http://localhost:5165
 
-GET {{Orchid.API_HostAddress}}/weatherforecast/
+GET {{Orchid.Api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###

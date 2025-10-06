@@ -1,4 +1,4 @@
-﻿namespace Orchid.API.Tests;
+﻿namespace Orchid.Api.Tests;
 
 public class UnitTest1
 {

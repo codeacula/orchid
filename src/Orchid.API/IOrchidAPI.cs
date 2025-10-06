@@ -1,6 +1,6 @@
-namespace Orchid.API;
+namespace Orchid.Api;
 
 /// <summary>
-/// Marker interface for Orchid API components.
+/// Marker interface for Orchid Api components.
 /// </summary>
-public interface IOrchidAPI { }
+internal interface IOrchidApi;

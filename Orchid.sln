@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orchid.API", "src\Orchid.API\Orchid.API.csproj", "{9798FDFF-70E9-4968-97AF-C8EDB254B581}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orchid.Api", "src\Orchid.Api\Orchid.Api.csproj", "{9798FDFF-70E9-4968-97AF-C8EDB254B581}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orchid.Core", "src\Orchid.Core\Orchid.Core.csproj", "{7FF0EF46-C8EE-400C-86E7-BFC4C22289AA}"
 EndProject
@@ -17,7 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orchid.AI.Tests", "tests\Orchid.AI.Tests\Orchid.AI.Tests.csproj", "{A8844FBB-9232-456F-B93A-1C6A53D7D7BE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orchid.API.Tests", "tests\Orchid.API.Tests\Orchid.API.Tests.csproj", "{4A2620AF-F5EB-4376-A2FD-E42511E8568F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orchid.Api.Tests", "tests\Orchid.Api.Tests\Orchid.Api.Tests.csproj", "{4A2620AF-F5EB-4376-A2FD-E42511E8568F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orchid.Core.Tests", "tests\Orchid.Core.Tests\Orchid.Core.Tests.csproj", "{5B00CF9B-11E4-4EB4-AAA1-00FD997D0AD1}"
 EndProject
