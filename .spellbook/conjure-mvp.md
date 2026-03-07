@@ -20,9 +20,9 @@
   - Streaming chat completions via `create_stream`
   - Stateless API (must resend full message history each call)
   
-- **Database**: SQLx v0.8.6 with SQLite
+- **Database**: SQLx v0.8.6 with PostgreSQL
   - Async, compile-time checked queries
-  - Embedded migrations via `sqlx::migrate!()`
+  - SQL migrations stored in `backend/migrations/`
   
 - **Core Dependencies** (with versions):
   - axum 0.8.8, tokio 1.50.0, tower-http 0.6.8
@@ -38,25 +38,25 @@
   - tower 0.5, http-body-util 0.1
   
 - **Memory Strategy**:
-  - Start with sliding window (last N messages)
-  - Evolve to summarization
-  - Optionally vector search for cross-conversation memory
+  - Maintain a sliding window for in-conversation context
+  - Maintain per-conversation summaries for longer-term recall
+  - Use summary-based cross-conversation memory for the same authenticated user in MVP
   
 - **Database Schema**:
-  - `conversations` table: id, title, created_at, updated_at
-  - `messages` table: id, conversation_id, role, content, token_count, created_at
-  - `conversation_summaries` table: for memory management
+  - Event store tables for conversations and snapshots
+  - Projection/view tables for conversation history, sidebar entries, and memory summaries
+  - Auth/session tables for users and browser sessions
   
 - **Testing Strategy**:
   - Unit tests in `#[cfg(test)]` modules inline
   - Integration tests in `tests/` directory
   - Use `#[tokio::test]` for async tests
   - Test Axum handlers via `.oneshot()` on the Router (tower::ServiceExt)
-  - In-memory SQLite for test isolation
+  - Use isolated Postgres/Redis-backed test setups for infrastructure-sensitive integration tests
   
 - **Streaming Implementation**:
-  - SSE (Server-Sent Events) recommended for chat streaming (simpler, one-directional server→client)
-  - WebSocket only if bidirectional communication needed
+  - WebSockets are the MVP transport for authenticated bidirectional chat streaming
+  - Do not implement SSE in MVP
   
 - **CORS Configuration**:
   - Use `tower-http` CorsLayer
@@ -77,7 +77,7 @@
   
 - **Chat UI Implementation**:
   - TransitionGroup for message list animations
-  - Composable for streaming (fetch ReadableStream for SSE)
+  - WebSocket-based chat composable for live token streaming
   - Auto-scroll composable for message list
   
 - **Markdown Rendering**: `markdown-it` with Shiki v3.23.0
@@ -115,8 +115,8 @@
   - `handle` → try_files + file_server for SPA routing
   
 - **Streaming Support**:
-  - Caddy auto-upgrades WebSocket connections (no config needed)
-  - Use `flush_interval -1` for SSE/streaming responses
+  - Caddy auto-upgrades WebSocket connections (no extra config needed)
+  - SSE-specific proxy tuning is not needed for MVP
   
 - **HTTPS Configuration**:
   - `auto_https off` for development
@@ -124,9 +124,9 @@
   
 - **Docker Compose Strategy**: Multi-file approach
   - Base docker-compose.yml
-  - dev override (hot reload, source mounts)
+  - dev override (optional, if needed later)
   - prod override (optimized, TLS certs volume)
-  - Named volumes for SQLite persistence and Caddy TLS certs
+  - Named volumes for PostgreSQL persistence, Redis data, and Caddy TLS certs
   
 - **Rust Docker Build Optimization**:
   - cargo-chef 3-stage build (planner → builder → runtime)
@@ -143,17 +143,17 @@
 
 ### Event Sourcing Architecture
 
-- **Crates**: `cqrs-es` v0.5.0 + `sqlite-es` v0.4.13
-  - Production-ready event sourcing with SQLite backend
+- **Crates**: `cqrs-es` v0.5.0 + `postgres-es` v0.5.x
+  - Event sourcing backed by PostgreSQL for MVP
   
 - **Event Types**:
   - ConversationStarted
   - UserMessageSent
   - AssistantMessageSent
-  - AssistantMessageChunkReceived
   - TitleChanged
   - ConversationSummarized
   - ConversationArchived
+  - ConversationModelSelected (optional derived event if needed by implementation; otherwise derive from latest message)
   
 - **Schema**:
   - Single `events` table with (aggregate_type, aggregate_id, sequence, event_type, event_version, payload, metadata) as PK-guarded optimistic concurrency
@@ -167,7 +167,7 @@
 - **Testing Strategy**:
   - cqrs-es TestFramework provides given/when/then synchronous tests with no database
   - Projection tests via direct View::update() calls
-  - Integration tests with in-memory SQLite
+  - Integration tests use Postgres/Redis-backed test setups where persistence matters
   
 - **Snapshotting**:
   - PersistedEventStore::new_snapshot_store(repo, 50) for long conversations
@@ -270,6 +270,163 @@
   - Token-by-token streaming with character-level display animation
   - Conversation fade-in transitions
   - Smooth typing indicators
+
+## Clarification Checklist
+
+Use this section to resolve the remaining product and architecture choices in small, explicit decisions before implementation. Each item includes a recommended default so decisions can be made quickly.
+
+### 1. Cross-Conversation Memory
+
+- **Question:** For MVP, what does "reference previous conversation memory" mean in practice?
+- **Why this matters:** This changes the backend memory model, the prompt-building logic, and whether the UI needs to expose retrieved memories.
+- **Recommended default:** Automatic per-user memory recall from that user's prior conversations only, using a lightweight summary-based approach rather than vector search.
+- **Decision:** Accepted. MVP uses automatic per-user memory recall from that user's prior conversations only, backed by summaries instead of vector search.
+- **Decision details:**
+  - Memory is automatic rather than manually invoked
+  - Memory is scoped to the authenticated user only
+  - Archived conversations may still be used as memory sources unless later excluded for UX reasons
+  - Memory usage is not surfaced in the UI during MVP
+- **Need to decide:**
+  - None for MVP unless you want to change archived-conversation behavior later
+
+### 2. Transport Direction
+
+- **Question:** Confirm that WebSockets fully replace SSE for MVP streaming.
+- **Why this matters:** Earlier research mentions SSE, but the later locked direction uses WebSockets.
+- **Recommended default:** WebSockets only for streaming and future agent support; do not implement SSE in MVP.
+- **Decision:** Accepted. WebSockets fully replace SSE for MVP streaming.
+- **Decision details:**
+  - Only WebSockets are implemented for live chat streaming
+  - SSE is not implemented in the backend or frontend MVP path
+  - Caddy and frontend behavior should assume WebSocket-first streaming
+
+### 3. Persistence Stack
+
+- **Question:** Confirm that PostgreSQL + Redis fully replace the earlier SQLite research notes.
+- **Why this matters:** Migrations, local setup, Docker, session storage, and CQRS wiring all depend on this.
+- **Recommended default:** PostgreSQL for events/views/sessions, Redis for streaming coordination and transient buffering, no SQLite in MVP.
+- **Decision:** Accepted. PostgreSQL + Redis fully replace the earlier SQLite notes for MVP.
+- **Decision details:**
+  - PostgreSQL stores events, snapshots, projections, users, and sessions
+  - Redis supports streaming coordination and transient runtime needs
+  - SQLite is not part of the MVP runtime or migration plan
+
+### 4. Authentication Scope
+
+- **Question:** Is multi-user auth part of MVP, or should MVP start as a single-user local app?
+- **Why this matters:** Auth is a large scope addition that affects API design, UI flow, and deployment complexity.
+- **Recommended default:** Keep auth in MVP as currently planned, but make the initial UX very small: login form, owner seed flow, and basic user isolation only.
+- **Decision:** Accepted. MVP includes auth using simple username/password combinations.
+- **Decision details:**
+  - Multi-user support stays in MVP
+  - Authentication uses username/password only
+  - Session-cookie auth remains the default browser flow
+  - Account management stays minimal: seeded owner user plus basic regular users
+  - No OAuth, magic links, password reset, or profile management in MVP
+
+### 5. Canonical Message Send Flow
+
+- **Question:** Should the frontend send chat messages via REST, via WebSocket, or use both with clearly different purposes?
+- **Why this matters:** The current plan includes both `POST /api/conversations/:id/messages` and WebSocket `send_message`, which risks duplicate logic.
+- **Recommended default:** Use REST to create conversations and perform CRUD, and use WebSocket as the canonical send/stream path for live chat messages.
+- **Decision:** Accepted. REST handles conversation CRUD, and WebSocket is the canonical send/stream path for live chat messages.
+- **Decision details:**
+  - Conversation creation, listing, retrieval, rename, archive, auth, model listing, and health checks remain HTTP endpoints
+  - Live message send and assistant token streaming happen over WebSocket
+  - MVP avoids duplicating primary send logic across REST and WebSocket
+- **Need to decide:**
+  - Whether the REST message endpoint remains as compatibility/fallback scaffolding or is omitted from the initial frontend flow
+  - Whether the frontend hard-blocks send until WebSocket is connected or queues locally for a moment
+
+### 6. Conversation Title Behavior
+
+- **Question:** How should conversation titles work in MVP?
+- **Why this matters:** The sidebar UX and initial conversation creation flow depend on it.
+- **Recommended default:** New conversations start as `New chat`; users may rename them manually; automatic title generation is deferred.
+- **Decision:** Adjusted. New conversations start with a timestamp-based default title, users may rename them manually, and AI-generated titles are included in MVP.
+- **Decision details:**
+  - A newly created conversation gets a timestamp-based placeholder title immediately so the sidebar has a stable label
+  - Users can edit titles manually at any time
+  - MVP includes AI-generated titles as an enhancement over the placeholder title
+  - The placeholder title should be replaced only after the AI-generated title is available or if the user manually renames first
+- **Implementation note:** AI title generation should be lightweight and non-blocking so it does not delay the first chat response.
+
+### 7. Model Selection Rules
+
+- **Question:** What are the fallback and persistence rules for model selection?
+- **Why this matters:** The backend records model per message, but the product behavior around defaults is still not explicit.
+- **Recommended default:** Model selection is per message, the UI remembers the last selected model locally for convenience, and the backend uses a configured default model if none is supplied.
+- **Decision:** Adjusted. The backend remembers the last selected model per conversation based on the most recent request.
+- **Decision details:**
+  - Each message still records its explicit model choice for event/history accuracy
+  - Each conversation also tracks a current model preference derived from the latest message request
+  - When the user sends a new message without manually changing the selector, the conversation's last-used model becomes the default
+  - A global configured default model is used only when a conversation has no prior model history yet
+  - For MVP, all authenticated users can see the same available model list unless later restricted
+- **Need to decide:**
+  - None for MVP
+- **Configured default for MVP:**
+  - Default OpenAI-compatible endpoint: `http://192.168.1.50:8080`
+  - Default model ID: `Hermes-3-Llama-3.1-8B-Q6_K_L`
+
+### 8. WebSocket Protocol Details
+
+- **Question:** What exact MVP protocol details should be standardized for the WebSocket connection?
+- **Why this matters:** Both frontend and backend need a stable contract before implementation.
+- **Recommended default:**
+  - Server sends an `ack` frame immediately after successful connection
+  - Client sends `send_message`
+  - Server sends `token`, then `done`, or `error`
+  - Each frame includes `conversation_id`
+  - Reconnect/resume is out of scope for MVP
+- **Decision:** Accepted. MVP standardizes on the recommended lightweight WebSocket protocol.
+- **Decision details:**
+  - Server sends `ack` immediately after successful authenticated connection
+  - Client sends `send_message` frames for live chat requests
+  - Server streams `token` frames followed by `done`, or sends `error`
+  - All chat-related frames include `conversation_id`
+  - Reconnect/resume is out of scope for MVP
+  - Idempotency guarantees for repeated `send_message` calls are out of scope for MVP
+- **Need to decide:**
+  - Whether frames should also include message IDs and timestamps in the first protocol version, or whether that can be added later without affecting MVP goals
+
+### 9. MVP UI Scope Around Memory and Conversations
+
+- **Question:** What must the UI expose in MVP beyond the basic chat surface?
+- **Why this matters:** The backend could support memory internally without adding visible UI, which is much smaller scope.
+- **Recommended default:** Keep the UI focused on login, sidebar, conversation history, model picker, and streaming chat. Do not add search, delete, or visible memory citations in MVP unless explicitly requested.
+- **Decision:** Accepted. MVP UI stays focused on the core chat experience and defers non-essential management features.
+- **Decision details:**
+  - Include login, sidebar, conversation history, model picker, and streaming chat
+  - Defer search, hard delete, visible memory citations, reconnect UI, and advanced settings
+  - Archive remains sufficient for MVP conversation management
+  - Memory usage stays invisible in the MVP UI even when used behind the scenes
+- **Need to decide:**
+  - None for MVP unless you later want visible memory references or stronger conversation management tools
+
+### 10. Recommended Decision Order
+
+To keep this ADHD-friendly, resolve the checklist in this order:
+
+1. Cross-conversation memory behavior
+2. Authentication scope
+3. Canonical message send flow
+4. Conversation title behavior
+5. Model selection defaults
+6. WebSocket protocol details
+7. UI extras to include or defer
+
+## Implementation-Ready Decisions
+
+- **Transport:** WebSockets are the only MVP streaming transport. REST remains for auth, health, model listing, and conversation CRUD.
+- **Persistence:** PostgreSQL + Redis are the only MVP persistence/runtime services. Earlier SQLite notes are superseded.
+- **Memory:** Cross-conversation memory is automatic, per-user, summary-based, and hidden from the UI in MVP.
+- **Auth:** MVP includes simple username/password auth with session cookies, one seeded owner, and regular users.
+- **Chat flow:** The frontend creates and manages conversations over HTTP, then sends live chat messages over WebSocket.
+- **Titles:** New conversations get timestamp-based titles immediately; users can rename them; AI-generated titles are part of MVP and should update non-blockingly.
+- **Models:** Each message records its model explicitly, and each conversation remembers its last-used model as the default for the next message.
+- **Default model config:** Brand-new conversations default to the OpenAI-compatible endpoint `http://192.168.1.50:8080` and model `Hermes-3-Llama-3.1-8B-Q6_K_L` until a different model is chosen.
+- **UI scope:** Include login, sidebar, history, model picker, and streaming chat. Defer search, hard delete, visible memory citations, reconnect UX, and advanced settings.
 
 ## Acceptance Tests
 
@@ -418,14 +575,14 @@ Located at `frontend/acceptance-tests/frontend-acceptance-tests.spec.ts` as spec
 
 ### Unit 3: Event Sourcing Projections (Views)
 **Status:** pending
-**Description:** Implement the three projection views: ConversationHistoryView, ConversationListEntry, ConversationMemoryView. These transform events into queryable read models.
+**Description:** Implement the three projection views: ConversationHistoryView, ConversationListEntry, ConversationMemoryView. These transform events into queryable read models and support automatic summary-based memory recall.
 **Acceptance Tests:**
 - All 6 tests in `acceptance_projections.rs`
 **Files to create/modify:**
 - `backend/src/domain/views.rs` (or `backend/src/views/` directory)
 - `backend/src/lib.rs` (add views module)
 **Dependencies:** Unit 2 (needs event types defined).
-**Research context:** cqrs-es `View` trait with `update()` method. ConversationHistoryView = full message list. ConversationListEntry = title + last_message_preview + updated_at for sidebar. ConversationMemoryView = sliding window of last N messages for AI context. Each view stores JSON payload. Views must track model_id per message.
+**Research context:** cqrs-es `View` trait with `update()` method. ConversationHistoryView = full message list. ConversationListEntry = title + last_message_preview + updated_at for sidebar plus current effective model hint if useful. ConversationMemoryView = sliding window of recent messages plus summary data for same-user cross-conversation recall. Each view stores JSON payload. Views must track model_id per message.
 
 ### Unit 4: Multi-Model AI Routing
 **Status:** pending
@@ -457,7 +614,7 @@ Located at `frontend/acceptance-tests/frontend-acceptance-tests.spec.ts` as spec
 
 ### Unit 6: REST API Endpoints
 **Status:** pending
-**Description:** Implement the Axum HTTP handlers and router for conversation CRUD, message sending, model listing, and health check. Wire up authentication middleware and CQRS dispatching.
+**Description:** Implement the Axum HTTP handlers and router for conversation CRUD, optional compatibility message submission, model listing, and health check. Wire up authentication middleware and CQRS dispatching.
 **Acceptance Tests:**
 - All 10 tests in `acceptance_api.rs`
 **Files to create/modify:**
@@ -467,20 +624,20 @@ Located at `frontend/acceptance-tests/frontend-acceptance-tests.spec.ts` as spec
 - `backend/src/api/models.rs` (request/response DTOs)
 - `backend/src/lib.rs` (add api module, create_router function)
 **Dependencies:** Unit 2 (conversation aggregate), Unit 3 (projections for reads), Unit 4 (model list), Unit 5 (auth middleware).
-**Research context:** Axum 0.8 with Router, State, extractors. Routes: POST /api/conversations, GET /api/conversations, GET /api/conversations/:id, PATCH /api/conversations/:id, DELETE /api/conversations/:id, POST /api/conversations/:id/messages, GET /api/models, GET /api/health. Use login_required! macro for protection. CorsLayer from tower-http. Message POST returns 202 (async processing via WS). Health check pings DB + Redis.
+**Research context:** Axum 0.8 with Router, State, extractors. Routes: POST /api/conversations, GET /api/conversations, GET /api/conversations/:id, PATCH /api/conversations/:id, DELETE /api/conversations/:id, POST /api/conversations/:id/messages, GET /api/models, GET /api/health. Use login_required! macro for protection. CorsLayer from tower-http. The frontend's canonical live send path is WebSocket; if the REST message endpoint remains, treat it as compatibility/fallback and still return 202. Health check pings DB + Redis.
 
 ### Unit 7: WebSocket Streaming
 **Status:** pending
-**Description:** Implement the WebSocket endpoint for real-time chat streaming. Handle authentication, message routing, token streaming from AI backends, error handling, and graceful close.
+**Description:** Implement the WebSocket endpoint for real-time chat streaming. Handle authentication, message routing, token streaming from AI backends, error handling, graceful close, and the stable MVP protocol contract.
 **Acceptance Tests:**
 - All 6 tests in `acceptance_websocket.rs`
 **Files to create/modify:**
 - `backend/src/ws/mod.rs`
 - `backend/src/ws/handler.rs` (WebSocket upgrade + message loop)
-- `backend/src/ws/protocol.rs` (WS message types: token, done, error, send_message)
+- `backend/src/ws/protocol.rs` (WS message types: ack, token, done, error, send_message)
 - `backend/src/lib.rs` (add ws module, add WS route)
 **Dependencies:** Unit 2 (conversation aggregate for commands), Unit 4 (AI backend for streaming), Unit 5 (auth for WS upgrade).
-**Research context:** Axum WebSocket via `features = ["ws"]`. Cookie-based auth works on WS upgrade (browser sends cookie). Protocol: client sends `{ type: "send_message", conversation_id, content, model_id }`, server streams `{ type: "token", conversation_id, content }` chunks then `{ type: "done", conversation_id }`. Buffer chunks in memory/Redis, emit single AssistantMessageSent event when stream completes. Single WS connection handles multiple conversations via conversation_id tagging.
+**Research context:** Axum WebSocket via `features = ["ws"]`. Cookie-based auth works on WS upgrade (browser sends cookie). Protocol: server sends `{ type: "ack" }` after successful connection; client sends `{ type: "send_message", conversation_id, content, model_id? }`; server streams `{ type: "token", conversation_id, content }` chunks then `{ type: "done", conversation_id }`, or `{ type: "error", conversation_id, message }`. Buffer chunks in memory/Redis, emit single AssistantMessageSent event when stream completes. Single WS connection handles multiple conversations via conversation_id tagging. Reconnect/resume and idempotency are out of scope for MVP.
 
 ### Unit 8: Backend Main & App Wiring
 **Status:** pending
@@ -497,7 +654,7 @@ Located at `frontend/acceptance-tests/frontend-acceptance-tests.spec.ts` as spec
 
 ### Unit 9: Frontend Scaffolding & Core Components
 **Status:** pending
-**Description:** Scaffold the Vue.js project, install dependencies, set up Vitest + testing infrastructure, and implement core components: MessageList, MessageInput, Sidebar, ModelSelector, StreamingIndicator, ChatMessage, LoginForm. Write all frontend acceptance tests as real .spec.ts files.
+**Description:** Scaffold the Vue.js project, install dependencies, set up Vitest + testing infrastructure, and implement the MVP UI: login flow, sidebar, chat views, model selection, timestamp-backed conversation titles, and WebSocket-driven streaming components. Write all frontend acceptance tests as real .spec.ts files.
 **Acceptance Tests:**
 - All 37 frontend test specifications (MessageList 6, MessageInput 4, Sidebar 4, ModelSelector 3, StreamingIndicator 3, ConversationStore 3, AuthStore 3, useChat 3, ChatMessage animations 2, LoginForm 3, App theme 2, MarkdownContent implicit)
 **Files to create/modify:**
@@ -546,7 +703,11 @@ Located at `frontend/acceptance-tests/frontend-acceptance-tests.spec.ts` as spec
   - WebSockets (not SSE) for streaming — bidirectional for future agent support
   - Event Sourcing for conversation storage with swappable projections
   - PostgreSQL + Redis (not SQLite) — Postgres for events/views/sessions, Redis for chunk buffering
-  - Model selection per-message (not per-conversation)
+  - Cross-conversation memory is automatic, per-user, summary-based, and not exposed in the MVP UI
+  - REST handles CRUD while WebSocket is the canonical live chat send/stream path
+  - Conversation titles start as timestamps, remain editable, and are later upgraded with non-blocking AI title generation
+  - Model usage is recorded per message while the backend remembers the last-used model per conversation
+  - Brand-new conversations default to `http://192.168.1.50:8080` with model `Hermes-3-Llama-3.1-8B-Q6_K_L`
   - Multi-model via async-openai with custom base_url + LlmBackend trait + ProviderRouter
   - Native dev workflow (Docker for deployment only)
   - Dark theme with orchid purple (#8B5CF6), CSS shimmer animations, prefers-reduced-motion
