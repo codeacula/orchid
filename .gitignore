@@ -1,0 +1,253 @@
+# =============================================================================
+# .gitignore — Rust + Bun + Vue/Vite + Docker + SQLx
+# Sources:
+#   https://github.com/github/gitignore/blob/main/Rust.gitignore
+#   https://bun.sh/docs/install/lockfile
+#   https://bun.sh/docs/install/cache
+#   https://github.com/github/gitignore/blob/main/Global/macOS.gitignore
+#   https://github.com/github/gitignore/blob/main/Global/Windows.gitignore
+#   https://github.com/github/gitignore/blob/main/Global/Linux.gitignore
+#   https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+#   https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
+#   https://github.com/github/gitignore/blob/main/Global/Vim.gitignore
+# =============================================================================
+
+
+# =============================================================================
+# 1. RUST / CARGO
+# =============================================================================
+
+debug/
+target/
+**/*.rs.bk
+*.pdb
+**/mutants.out*/
+
+
+# =============================================================================
+# 2. BUN / NODE_MODULES
+# Bun still uses node_modules/ (hardlinks from ~/.bun/install/cache on Linux).
+# bun.lock (text lockfile, v1.2+ default) should be COMMITTED — do not ignore.
+# =============================================================================
+
+node_modules/
+
+# TypeScript incremental compilation cache
+*.tsbuildinfo
+
+
+# =============================================================================
+# 3. VUE / VITE
+# =============================================================================
+
+dist/
+*.local
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+.vite/
+
+
+# =============================================================================
+# 4. ENVIRONMENT FILES / SECRETS
+# =============================================================================
+
+.env
+.env.*
+!.env.example
+
+*.pem
+*.key
+*.p12
+*.pfx
+
+secrets.json
+credentials.json
+service-account*.json
+
+
+# =============================================================================
+# 5. IDE — VS CODE
+# Keep shared settings, tasks, launch configs, extensions, and snippets.
+# =============================================================================
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+!*.code-workspace
+*.vsix
+
+
+# =============================================================================
+# 5b. IDE — JETBRAINS (IntelliJ, CLion, RustRover, WebStorm, etc.)
+# =============================================================================
+
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/**/aws.xml
+.idea/**/contentModel.xml
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
+.idea/**/gradle.xml
+.idea/**/libraries
+.idea/**/mongoSettings.xml
+.idea/**/sonarlint/
+.idea/**/sonarlint.xml
+.idea/**/httpRequests/
+.idea/**/caches/build_file_checksums.ser
+.idea/**/copilot.data.migration.*.xml
+cmake-build-*/
+*.iws
+*.ipr
+out/
+.idea_modules/
+atlassian-ide-plugin.xml
+.idea/replstate.xml
+http-client.private.env.json
+
+
+# =============================================================================
+# 5c. IDE — VIM / NEOVIM
+# =============================================================================
+
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+tags
+[._]*.un~
+
+
+# =============================================================================
+# 6. OS FILES
+# =============================================================================
+
+# macOS
+.DS_Store
+__MACOSX/
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+nohup.out
+
+
+# =============================================================================
+# 7. DOCKER — RUNTIME FILES ONLY
+# Dockerfiles, docker-compose.yml, and .dockerignore are committed.
+# =============================================================================
+
+docker-compose.override.yml
+docker-data/
+.docker/
+
+
+# =============================================================================
+# 8. REDIS
+# =============================================================================
+
+dump.rdb
+*.rdb
+appendonly.aof
+redis.log
+
+
+# =============================================================================
+# 9. SQLx
+# NOTE: .sqlx/ is intentionally NOT ignored.
+# It contains offline query metadata for cargo sqlx prepare / CI builds.
+# =============================================================================
+
+
+# =============================================================================
+# 10. LOGS / COVERAGE / MISC
+# =============================================================================
+
+logs/
+*.log
+
+coverage/
+.coverage
+htmlcov/
+*.lcov
+.nyc_output/
+
+.eslintcache
+.stylelintcache
+.cache/
+.parcel-cache/
+
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.orig
+
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+*.prof
+perf.data
+perf.data.old
+
+pids/
+*.pid
+*.seed
+*.pid.lock
