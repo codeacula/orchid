@@ -3,8 +3,6 @@
 # Services: PostgreSQL, Redis, Backend (Rust), Frontend (Vue), Caddy (Reverse Proxy)
 # =============================================================================
 
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:

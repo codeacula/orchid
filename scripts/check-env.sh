@@ -11,6 +11,8 @@ set -e
 TOOLS=(
     "rustc"
     "cargo"
+    "node"
+    "npm"
     "bun"
     "docker"
     "just"

@@ -23,6 +23,7 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useConversationStore } from '../stores/conversation'
 
 defineOptions({
@@ -31,12 +32,19 @@ defineOptions({
 
 const store = useConversationStore()
 
+onMounted(async () => {
+  await store.loadConversations()
+})
+
 function handleSelectConversation(conversationId: string) {
   store.setActive(conversationId)
 }
 
 function handleNewChat() {
-  store.newConversation()
+  const draft = store.newConversation()
+  if (draft) {
+    void store.createConversation(draft.title, draft.id)
+  }
 }
 </script>
 

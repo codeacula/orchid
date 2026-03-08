@@ -1,6 +1,6 @@
 <template>
   <form @submit.prevent="handleSubmit" class="login-form">
-    <h2>Login</h2>
+    <h2>{{ mode === 'login' ? 'Login' : 'Create account' }}</h2>
     <div v-if="errorMessage" class="error-message">
       {{ errorMessage }}
     </div>
@@ -23,7 +23,10 @@
       />
     </div>
     <button :disabled="isLoading" type="submit" class="submit-btn">
-      {{ isLoading ? 'Logging in...' : 'Login' }}
+      {{ isLoading ? (mode === 'login' ? 'Logging in...' : 'Creating account...') : (mode === 'login' ? 'Login' : 'Create account') }}
+    </button>
+    <button type="button" class="secondary-btn" :disabled="isLoading" @click="toggleMode">
+      {{ mode === 'login' ? 'Need an account?' : 'Already have an account?' }}
     </button>
   </form>
 </template>
@@ -42,13 +45,19 @@ const username = ref('')
 const password = ref('')
 const errorMessage = ref('')
 const isLoading = ref(false)
+const mode = ref<'login' | 'register'>('login')
 
 async function handleSubmit() {
   errorMessage.value = ''
   isLoading.value = true
   
   try {
-    await authStore.login(username.value, password.value)
+    if (mode.value === 'login') {
+      await authStore.login(username.value, password.value)
+    } else {
+      await authStore.register(username.value, password.value)
+      await authStore.login(username.value, password.value)
+    }
     username.value = ''
     password.value = ''
   } catch (error) {
@@ -56,6 +65,11 @@ async function handleSubmit() {
   } finally {
     isLoading.value = false
   }
+}
+
+function toggleMode() {
+  mode.value = mode.value === 'login' ? 'register' : 'login'
+  errorMessage.value = ''
 }
 </script>
 
@@ -119,6 +133,15 @@ input[type="password"]:focus {
   border: none;
   border-radius: 0.25rem;
   font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary-btn {
+  padding: 0.5rem;
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
   cursor: pointer;
 }
 

@@ -19,9 +19,34 @@ export const useModelsStore = defineStore('models', () => {
     selectedModelId.value = modelId
   }
 
+  async function loadModels() {
+    try {
+      const response = await fetch('/api/models', {
+        credentials: 'include'
+      })
+
+      if (!response.ok) {
+        return
+      }
+
+      const payload = await response.json()
+      models.value = payload.map((model: { model_id: string; display_name: string }) => ({
+        id: model.model_id,
+        name: model.display_name
+      }))
+
+      if (!models.value.some((model) => model.id === selectedModelId.value) && models.value[0]) {
+        selectedModelId.value = models.value[0].id
+      }
+    } catch {
+      // Keep local defaults when the API is unavailable.
+    }
+  }
+
   return {
     models,
     selectedModelId,
-    setSelectedModel
+    setSelectedModel,
+    loadModels
   }
 })

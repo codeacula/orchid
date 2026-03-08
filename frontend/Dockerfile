@@ -3,7 +3,7 @@
 # Multi-stage build: builder → runtime
 # =============================================================================
 
-FROM oven/bun:1 as builder
+FROM oven/bun:1 AS runtime
 
 WORKDIR /app
 
@@ -19,22 +19,12 @@ COPY . .
 # Build the Vue application with Vite
 RUN bun run build
 
-
-# Stage 2: Runtime — Serve built app with nginx
-FROM nginx:alpine
-
-# Copy the built application from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration (if exists, otherwise use default)
-COPY nginx.conf /etc/nginx/nginx.conf 2>/dev/null || echo "Using default nginx config"
-
-# Expose port 80
-EXPOSE 80
+# Expose the preview server port
+EXPOSE 5173
 
 # Health check
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
-    CMD wget -q -O /dev/null http://localhost/health || exit 1
+    CMD bun -e "fetch('http://127.0.0.1:5173').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start the Vite preview server
+CMD ["bun", "x", "vite", "preview", "--host", "0.0.0.0", "--port", "5173"]

@@ -1,0 +1,13 @@
+.git
+.github
+.spellbook
+node_modules
+frontend/node_modules
+frontend/dist
+backend/target
+backend/.sqlx
+target
+dist
+.env
+.env.*
+*.log

@@ -13,19 +13,19 @@
         }
     }
 
+    # WebSocket chat transport
+    handle /ws {
+        reverse_proxy backend:3000
+    }
+
     # Health check endpoint
     handle /health {
         respond "OK" 200
     }
 
-    # Fallback to Vue SPA
+    # Frontend application
+    # Historical SPA note: a static setup would use try_files + file_server here.
     handle {
-        # Try to serve the file as-is, then fall back to index.html
-        try_files {path} /index.html
-
-        # Serve files from frontend's dist directory
-        file_server {
-            root /app/dist
-        }
+        reverse_proxy frontend:5173
     }
 }
