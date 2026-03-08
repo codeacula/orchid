@@ -4,8 +4,17 @@ import { createTestingPinia } from '@pinia/testing'
 import LoginForm from '../LoginForm.vue'
 import { useAuthStore } from '../../stores/auth'
 
+const push = vi.fn()
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    push
+  })
+}))
+
 describe('LoginForm', () => {
   it('submits credentials on form submit', async () => {
+    push.mockReset()
     const wrapper = mount(LoginForm, {
       global: {
         plugins: [createTestingPinia({
@@ -27,9 +36,11 @@ describe('LoginForm', () => {
     await flushPromises()
 
     expect(store.login).toHaveBeenCalledWith('testuser', 'password123')
+    expect(push).toHaveBeenCalledWith('/')
   })
 
   it('displays error message on login failure', async () => {
+    push.mockReset()
     const wrapper = mount(LoginForm, {
       global: {
         plugins: [createTestingPinia({
@@ -52,9 +63,11 @@ describe('LoginForm', () => {
 
     expect(wrapper.find('.error-message').exists()).toBe(true)
     expect(wrapper.text()).toContain('Invalid credentials')
+    expect(push).not.toHaveBeenCalled()
   })
 
   it('disables submit button during login attempt', async () => {
+    push.mockReset()
     const wrapper = mount(LoginForm, {
       global: {
         plugins: [createTestingPinia({

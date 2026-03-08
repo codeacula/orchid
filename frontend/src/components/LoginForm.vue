@@ -33,6 +33,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 defineOptions({
@@ -40,6 +41,7 @@ defineOptions({
 })
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const username = ref('')
 const password = ref('')
@@ -58,6 +60,7 @@ async function handleSubmit() {
       await authStore.register(username.value, password.value)
       await authStore.login(username.value, password.value)
     }
+    await router.push('/')
     username.value = ''
     password.value = ''
   } catch (error) {
