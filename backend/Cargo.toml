@@ -19,6 +19,7 @@ async-openai = "0.33"
 async-trait = "0.1"
 futures = "0.3"
 futures-util = "0.3"
+reqwest = { version = "0.11", features = ["json"] }
 
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "migrate", "uuid", "chrono"] }
@@ -54,7 +55,10 @@ tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 axum-test = "19"
 mockall = "0.14"
-wiremock = "0.6"
+wiremock = "0.5"
 tokio-tungstenite = "0.26"
 testcontainers = "0.26"
 testcontainers-modules = { version = "0.14", features = ["postgres", "redis"] }
+
+[patch.crates-io]
+wiremock = { path = "../wiremock-patch" }

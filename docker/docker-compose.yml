@@ -1,0 +1,118 @@
+# =============================================================================
+# Docker Compose Configuration for Orchid MVP
+# Services: PostgreSQL, Redis, Backend (Rust), Frontend (Vue), Caddy (Reverse Proxy)
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:17-alpine
+    container_name: orchid-postgres
+    environment:
+      POSTGRES_USER: orchid
+      POSTGRES_PASSWORD: orchid
+      POSTGRES_DB: orchid
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orchid"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - orchid-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: orchid-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - orchid-network
+
+  # Rust Backend API
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    container_name: orchid-backend
+    environment:
+      DATABASE_URL: postgres://orchid:orchid@postgres:5432/orchid
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
+      OWNER_USERNAME: ${OWNER_USERNAME:-admin}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:-change-me}
+      OWNER_SYSTEM_PROMPT: ${OWNER_SYSTEM_PROMPT:-You are a helpful assistant.}
+      USER_SYSTEM_PROMPT: ${USER_SYSTEM_PROMPT:-You are a helpful assistant.}
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4o}
+      RUST_LOG: info
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - orchid-network
+
+  # Vue 3 Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: orchid-frontend
+    environment:
+      VITE_API_URL: http://localhost:${BACKEND_PORT:-3000}
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      - backend
+    networks:
+      - orchid-network
+
+  # Caddy Reverse Proxy
+  caddy:
+    image: caddy:2.11.2-alpine
+    container_name: orchid-caddy
+    ports:
+      - "${CADDY_PORT:-80}:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      BACKEND_URL: http://backend:3000
+      FRONTEND_URL: http://frontend:5173
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - orchid-network
+
+# Docker Volumes
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
+
+# Docker Networks
+networks:
+  orchid-network:
+    driver: bridge

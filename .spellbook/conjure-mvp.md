@@ -537,7 +537,7 @@ Located at `frontend/acceptance-tests/frontend-acceptance-tests.spec.ts` as spec
 ## Units of Work
 
 ### Unit 1: Infrastructure & Dev Environment
-**Status:** pending
+**Status:** verified
 **Description:** Create all project infrastructure files: .gitignore, .env.example, justfile, dev scripts, Docker configuration, Caddyfile, and initial PostgreSQL migration.
 **Acceptance Tests:**
 - `acceptance_infrastructure::env_example_file_exists_with_required_variables`
@@ -562,7 +562,7 @@ Located at `frontend/acceptance-tests/frontend-acceptance-tests.spec.ts` as spec
 **Research context:** Caddy 2.11.2, cargo-chef 3-stage build, postgres:17-alpine + redis:7-alpine, Docker Compose profiles (infra/app/full), just 1.46.0. Migration must create: events table, snapshots table, users table (id, username, password, role), sessions table, and view tables.
 
 ### Unit 2: Conversation Aggregate (Domain Model)
-**Status:** pending
+**Status:** verified
 **Description:** Implement the Conversation aggregate, commands, events, error types, and the `handle()`/`apply()` methods using cqrs-es. This is pure domain logic with no I/O.
 **Acceptance Tests:**
 - All 11 tests in `acceptance_event_sourcing.rs`
@@ -585,7 +585,7 @@ Located at `frontend/acceptance-tests/frontend-acceptance-tests.spec.ts` as spec
 **Research context:** cqrs-es `View` trait with `update()` method. ConversationHistoryView = full message list. ConversationListEntry = title + last_message_preview + updated_at for sidebar plus current effective model hint if useful. ConversationMemoryView = sliding window of recent messages plus summary data for same-user cross-conversation recall. Each view stores JSON payload. Views must track model_id per message.
 
 ### Unit 4: Multi-Model AI Routing
-**Status:** pending
+**Status:** in-progress
 **Description:** Implement the LlmBackend trait, OpenAiCompatBackend (wrapping async-openai), ProviderRouter, and ProviderRegistry for configuring and routing to multiple AI backends.
 **Acceptance Tests:**
 - All 6 tests in `acceptance_multi_model.rs`
@@ -653,7 +653,7 @@ Located at `frontend/acceptance-tests/frontend-acceptance-tests.spec.ts` as spec
 **Research context:** postgres-es `postgres_cqrs()` function to build CqrsFramework. `default_postgress_pool()` for connection pool. deadpool-redis for Redis pool. dotenvy for .env loading. tracing-subscriber for logging. Bind to 0.0.0.0:3000. Create a `create_app()` function that returns Router (testable) and `main()` that just calls serve.
 
 ### Unit 9: Frontend Scaffolding & Core Components
-**Status:** pending
+**Status:** in-progress (retrying with bun-based tooling)
 **Description:** Scaffold the Vue.js project, install dependencies, set up Vitest + testing infrastructure, and implement the MVP UI: login flow, sidebar, chat views, model selection, timestamp-backed conversation titles, and WebSocket-driven streaming components. Write all frontend acceptance tests as real .spec.ts files.
 **Acceptance Tests:**
 - All 37 frontend test specifications (MessageList 6, MessageInput 4, Sidebar 4, ModelSelector 3, StreamingIndicator 3, ConversationStore 3, AuthStore 3, useChat 3, ChatMessage animations 2, LoginForm 3, App theme 2, MarkdownContent implicit)

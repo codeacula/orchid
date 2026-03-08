@@ -1,0 +1,31 @@
+# =============================================================================
+# Caddy Configuration for Orchid MVP
+# Routes API requests to backend, serves SPA from frontend
+# =============================================================================
+
+:80 {
+    # API Routes — Reverse proxy to backend service
+    handle /api/* {
+        reverse_proxy backend:3000 {
+            # WebSocket support (automatic in Caddy 2)
+            header_up Connection "upgrade"
+            header_up Upgrade "websocket"
+        }
+    }
+
+    # Health check endpoint
+    handle /health {
+        respond "OK" 200
+    }
+
+    # Fallback to Vue SPA
+    handle {
+        # Try to serve the file as-is, then fall back to index.html
+        try_files {path} /index.html
+
+        # Serve files from frontend's dist directory
+        file_server {
+            root /app/dist
+        }
+    }
+}
