@@ -3,6 +3,11 @@
     <div class="chat-toolbar">
       <ModelSelector @model-change="handleModelChange" />
     </div>
+    <div v-if="showWelcome" class="welcome-state">
+      <p class="welcome-kicker">Orchid is ready</p>
+      <h2>Start your first conversation</h2>
+      <p>Pick a model and send a message to begin. A fresh chat is ready for you.</p>
+    </div>
     <MessageList :messages="messages" />
     <StreamingIndicator :streaming="isStreaming" :partial-content="streamingMessage" />
     <MessageInput :disabled="isStreaming || !activeConversationId" @send="handleSendMessage" />
@@ -41,10 +46,15 @@ const messages = computed(() => {
 })
 
 const activeConversationId = computed(() => conversationStore.activeConversationId)
+const showWelcome = computed(() => Boolean(activeConversationId.value && messages.value.length === 0))
 
 onMounted(async () => {
   await modelsStore.loadModels()
   await conversationStore.loadConversations()
+
+  if (!conversationStore.activeConversationId) {
+    await conversationStore.createConversation()
+  }
 
   if (conversationStore.activeConversationId) {
     await conversationStore.loadConversation(conversationStore.activeConversationId)
@@ -89,5 +99,27 @@ function handleModelChange(modelId: string) {
 
 .chat-toolbar {
   border-bottom: 1px solid var(--color-border);
+}
+
+.welcome-state {
+  padding: 2rem 1rem 0;
+}
+
+.welcome-kicker {
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.welcome-state h2 {
+  margin-top: 0.5rem;
+  font-size: 1.8rem;
+}
+
+.welcome-state p:last-child {
+  margin-top: 0.5rem;
+  color: rgba(243, 244, 246, 0.8);
 }
 </style>

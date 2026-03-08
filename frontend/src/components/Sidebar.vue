@@ -36,8 +36,9 @@ onMounted(async () => {
   await store.loadConversations()
 })
 
-function handleSelectConversation(conversationId: string) {
+async function handleSelectConversation(conversationId: string) {
   store.setActive(conversationId)
+  await store.loadConversation(conversationId)
 }
 
 function handleNewChat() {

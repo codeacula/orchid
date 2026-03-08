@@ -125,8 +125,7 @@ export const useConversationStore = defineStore('conversation', () => {
         credentials: 'include'
       })
       if (!response.ok) return
-      const payload = await response.json()
-      const history = payload.history
+      const history = await response.json()
       upsertConversation({
         id: history.id,
         title: history.title,
