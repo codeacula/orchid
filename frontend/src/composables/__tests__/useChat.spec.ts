@@ -36,9 +36,16 @@ describe('useChat', () => {
   })
 
   it('establishes WebSocket connection on mount', () => {
-    const wsConstructor = vi.fn((url: string) => {
-      return new MockWebSocket(url)
-    })
+    class TestWebSocket extends MockWebSocket {
+      static calls: string[] = []
+
+      constructor(url: string) {
+        super(url)
+        TestWebSocket.calls.push(url)
+      }
+    }
+
+    const wsConstructor = TestWebSocket as any
     vi.stubGlobal('WebSocket', wsConstructor)
 
     const TestComponent = defineComponent({
@@ -50,23 +57,24 @@ describe('useChat', () => {
 
     mount(TestComponent)
 
-    expect(wsConstructor).toHaveBeenCalledWith('ws://localhost:8000/ws')
+    expect(TestWebSocket.calls).toEqual(['ws://localhost:8000/ws'])
   })
 
   it('receives streaming tokens and assembles message', () => {
-    const wsConstructor = vi.fn((url: string) => {
-      const ws = new MockWebSocket(url)
-      setTimeout(() => ws.simulateOpen(), 0)
-      return ws
-    })
+    let wsInstance: MockWebSocket | null = null
+    class TestWebSocket extends MockWebSocket {
+      constructor(url: string) {
+        super(url)
+        wsInstance = this
+        setTimeout(() => this.simulateOpen(), 0)
+      }
+    }
+    const wsConstructor = TestWebSocket as any
     vi.stubGlobal('WebSocket', wsConstructor)
 
-    let wsInstance: MockWebSocket | null = null
     const TestComponent = defineComponent({
       setup() {
-        const result = useChat('ws://localhost:8000/ws')
-        wsInstance = (wsConstructor as any).mock.results[0].value
-        return result
+        return useChat('ws://localhost:8000/ws')
       },
       template: '<div></div>'
     })
@@ -80,19 +88,20 @@ describe('useChat', () => {
   })
 
   it('sets isStreaming to true during streaming and false when done', () => {
-    const wsConstructor = vi.fn((url: string) => {
-      const ws = new MockWebSocket(url)
-      setTimeout(() => ws.simulateOpen(), 0)
-      return ws
-    })
+    let wsInstance: MockWebSocket | null = null
+    class TestWebSocket extends MockWebSocket {
+      constructor(url: string) {
+        super(url)
+        wsInstance = this
+        setTimeout(() => this.simulateOpen(), 0)
+      }
+    }
+    const wsConstructor = TestWebSocket as any
     vi.stubGlobal('WebSocket', wsConstructor)
 
-    let wsInstance: MockWebSocket | null = null
     const TestComponent = defineComponent({
       setup() {
-        const result = useChat('ws://localhost:8000/ws')
-        wsInstance = (wsConstructor as any).mock.results[0].value
-        return result
+        return useChat('ws://localhost:8000/ws')
       },
       template: '<div></div>'
     })

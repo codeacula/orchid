@@ -21,7 +21,10 @@ export function useChat(wsUrl: string = defaultWsUrl(), callbacks: ChatCallbacks
   const connected = ref(false)
   const lastError = ref('')
   
-  const ws: WebSocket = (globalThis as any).WebSocket(wsUrl)
+  const WebSocketCtor = (globalThis as typeof globalThis & {
+    WebSocket: typeof WebSocket
+  }).WebSocket
+  const ws: WebSocket = new WebSocketCtor(wsUrl)
 
   ws.onopen = () => {
     connected.value = true
